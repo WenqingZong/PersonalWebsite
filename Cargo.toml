@@ -1,0 +1,8 @@
+[package]
+name = "personal_website"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+include_dir = "0.7.4"
+rocket = { version = "0.5.1", features = ["tls"] }

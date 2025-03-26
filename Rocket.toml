@@ -1,0 +1,10 @@
+[default]
+address = "0.0.0.0"
+port = 80
+
+[release]
+static_cache = true
+
+[release.tls]
+key = "/etc/letsencrypt/live/zongwenqing.com/privkey.pem"
+certs = "/etc/letsencrypt/live/zongwenqing.com/fullchain.pem"
