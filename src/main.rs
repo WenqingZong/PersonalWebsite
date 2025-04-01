@@ -2,13 +2,16 @@
 
 #[cfg(test)] mod tests;
 
+use include_dir::{include_dir, Dir, DirEntry};
 use rocket::{State, Shutdown};
-use rocket::fs::{relative, FileServer};
+use rocket::fs::{relative, FileServer, NamedFile};
 use rocket::form::Form;
+use rocket::http::ContentType;
 use rocket::response::stream::{EventStream, Event};
 use rocket::serde::{Serialize, Deserialize};
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
 use rocket::tokio::select;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq, UriDisplayQuery))]
@@ -19,6 +22,29 @@ struct Message {
     #[field(validate = len(..20))]
     pub username: String,
     pub message: String,
+}
+
+static STATIC_DIR: Dir = include_dir!("static");
+
+/// Returns any requested files.
+#[get("/<path..>")]
+fn files(path: PathBuf) -> Option<(ContentType, &'static [u8])> {
+    // Handle root path as index.html
+    let path = if path.to_str() == Some("") {
+        Path::new("index.html")
+    } else {
+        path.as_path()
+    };
+
+    // Find file in embedded directory
+    let file = STATIC_DIR.get_file(path)?;
+
+    // Get content type from file extension
+    let content_type = ContentType::from_extension(
+        path.extension()?.to_str()?
+    ).unwrap_or(ContentType::Bytes);
+
+    Some((content_type, file.contents()))
 }
 
 /// Returns an infinite stream of server-sent events. Each event is a message
@@ -53,6 +79,5 @@ fn post(form: Form<Message>, queue: &State<Sender<Message>>) {
 fn rocket() -> _ {
     rocket::build()
         .manage(channel::<Message>(1024).0)
-        .mount("/", routes![post, events])
-        .mount("/", FileServer::new(relative!("static"), rocket::fs::Options::default()))
+        .mount("/", routes![post, events, files])
 }
