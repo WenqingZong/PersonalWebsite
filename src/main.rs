@@ -1,16 +1,18 @@
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
-#[cfg(test)] mod tests;
+#[cfg(test)]
+mod tests;
 
 use include_dir::{include_dir, Dir, DirEntry};
-use rocket::{State, Shutdown};
-use rocket::fs::{relative, FileServer, NamedFile};
 use rocket::form::Form;
+use rocket::fs::{relative, FileServer, NamedFile};
 use rocket::http::ContentType;
-use rocket::response::stream::{EventStream, Event};
-use rocket::serde::{Serialize, Deserialize};
-use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
+use rocket::response::stream::{Event, EventStream};
+use rocket::serde::{Deserialize, Serialize};
 use rocket::tokio::select;
+use rocket::tokio::sync::broadcast::{channel, error::RecvError, Sender};
+use rocket::{Shutdown, State};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, FromForm, Serialize, Deserialize)]
@@ -40,9 +42,8 @@ fn files(path: PathBuf) -> Option<(ContentType, &'static [u8])> {
     let file = STATIC_DIR.get_file(path)?;
 
     // Get content type from file extension
-    let content_type = ContentType::from_extension(
-        path.extension()?.to_str()?
-    ).unwrap_or(ContentType::Bytes);
+    let content_type =
+        ContentType::from_extension(path.extension()?.to_str()?).unwrap_or(ContentType::Bytes);
 
     Some((content_type, file.contents()))
 }

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Run cargo fmt
+cargo fmt
+
+# Add the formatted files to the commit
+git add -u
