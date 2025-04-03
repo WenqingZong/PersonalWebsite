@@ -3,7 +3,8 @@
 .vscode/
 
 # Generated
-target/
+backend/target/
+frontend/build/
 
 # MacOS
 .DS_Store
