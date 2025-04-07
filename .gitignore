@@ -5,6 +5,7 @@
 # Generated
 backend/target/
 frontend/build/
+frontend/node_modules/
 
 # MacOS
 .DS_Store

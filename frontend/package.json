@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.1"
+  },
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "Frontend of Wenqing Zong's personal website",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Wenqing Zong",
+  "license": "ISC"
+}
