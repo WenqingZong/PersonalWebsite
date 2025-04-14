@@ -4,7 +4,7 @@
 
 # Generated
 backend/target/
-frontend/build/
+frontend/out/
 frontend/node_modules/
 
 # MacOS
