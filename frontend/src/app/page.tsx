@@ -1,10 +1,10 @@
 // import Image from "next/image";
-import P5Background from "@/components/P5Background";
+import StarBackground from "@/components/StarBackground";
 
 export default function Home() {
   return (
     <div style={{ position: 'relative' }}>
-      <P5Background />
+      <StarBackground />
       {/* 你的页面内容 */}
       <div style={{ position: 'relative', zIndex: 1 }}>
         <h1>Your Content Here</h1>
