@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 interface Star {
   pos: { x: number; y: number };
@@ -11,12 +11,11 @@ interface Star {
 
 const StarBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const mousePosRef = useRef({ x: 0, y: 0 });
   const starsRef = useRef<Star[]>([]);
   const animationFrame = useRef<number>(null);
 
   const NUM_STARS = 500;
-  // const FPS = 60;
 
   const onScreen = (x: number, y: number): boolean => {
     if (!canvasRef.current) return false;
@@ -29,10 +28,7 @@ const StarBackground = () => {
     const x: number = Math.random() * canvasRef.current.width;
     const y: number = Math.random() * canvasRef.current.height;
     return {
-      pos: {
-        x,
-        y,
-      },
+      pos: { x, y },
       prevPos: { x: 0, y: 0 },
       vel: { x: 0, y: 0 },
       ang: Math.atan2(
@@ -47,7 +43,6 @@ const StarBackground = () => {
     star.vel.y += Math.sin(star.ang) * acc;
 
     star.prevPos = { ...star.pos };
-
     star.pos.x += star.vel.x;
     star.pos.y += star.vel.y;
   };
@@ -59,18 +54,18 @@ const StarBackground = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 清空画布（使用半透明填充实现拖尾效果）
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    // 清空画布（实现拖尾效果）
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 计算加速度
-    const acc = mousePos.x / canvas.width * 0.2 + 0.005;
+    // 从ref获取鼠标位置计算加速度
+    const acc = mousePosRef.current.x / canvas.width * 0.2 + 0.005;
 
     // 更新和绘制星星
     starsRef.current = starsRef.current.filter(star => {
       updateStar(star, acc);
 
-      // 绘制线段
+      // 绘制运动轨迹
       const velocityMagnitude = Math.sqrt(star.vel.x ** 2 + star.vel.y ** 2);
       const alpha = Math.min(velocityMagnitude / 3 * 255, 255);
 
@@ -84,20 +79,19 @@ const StarBackground = () => {
       return onScreen(star.prevPos.x, star.prevPos.y);
     });
 
-    // 补充新星星
+    // 补充消失的星星
     while (starsRef.current.length < NUM_STARS) {
       starsRef.current.push(createStar());
     }
 
     animationFrame.current = requestAnimationFrame(draw);
-  }, [mousePos.x]);
+  }, []);
 
   useEffect(() => {
-    // 初始化画布和星星
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // 设置画布尺寸
+    // 响应式画布尺寸
     const updateCanvasSize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -106,28 +100,35 @@ const StarBackground = () => {
 
     // 初始化星星
     starsRef.current = Array.from({ length: NUM_STARS }, createStar);
-
-    // 启动动画
     animationFrame.current = requestAnimationFrame(draw);
 
-    // 窗口大小变化处理
+    // 窗口尺寸变化处理
     window.addEventListener('resize', updateCanvasSize);
 
-    // 清理函数
+    // 性能优化：页面不可见时暂停动画
+    const handleVisibilityChange = () => {
+      if (document.hidden && animationFrame.current) {
+        cancelAnimationFrame(animationFrame.current);
+      } else {
+        animationFrame.current = requestAnimationFrame(draw);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       window.removeEventListener('resize', updateCanvasSize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (animationFrame.current) {
         cancelAnimationFrame(animationFrame.current);
       }
     };
   }, [draw]);
 
-  // 鼠标移动监听
   useEffect(() => {
+    // 鼠标移动监听（使用ref存储位置，不触发重渲染）
     const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
     };
-
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
