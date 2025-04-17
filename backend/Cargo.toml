@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+actix-cors = "0.7.1"
 actix-web = "4.10.2"
 tokio = "1.44.1"
