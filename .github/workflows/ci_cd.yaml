@@ -11,48 +11,48 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # - name: cargo check
-      #   run: cargo check --all
-      #   working-directory: backend
+      - name: cargo check
+        run: cargo check --all
+        working-directory: backend
 
-      # - name: cargo fmt check
-      #   run: cargo fmt --all --check
-      #   working-directory: backend
+      - name: cargo fmt check
+        run: cargo fmt --all --check
+        working-directory: backend
 
-      # - name: cargo test
-      #   run: cargo test --all
-      #   working-directory: backend
+      - name: cargo test
+        run: cargo test --all
+        working-directory: backend
 
-      # - name: cargo clippy check
-      #   run: cargo clippy --all --all-targets --all-features
-      #   working-directory: backend
+      - name: cargo clippy check
+        run: cargo clippy --all --all-targets --all-features
+        working-directory: backend
 
   frontend_check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      # - uses: actions/setup-node@v3
-      #   with:
-      #     node-version: "latest"
-      #     cache: "npm"
-      #     cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "latest"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-      # - name: Install dependencies
-      #   run: npm ci
-      #   working-directory: frontend
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
 
-      # - name: Type check
-      #   run: npm run type-check
-      #   working-directory: frontend
+      - name: Type check
+        run: npm run type-check
+        working-directory: frontend
 
-      # - name: Lint check
-      #   run: npm run lint
-      #   working-directory: frontend
+      - name: Lint check
+        run: npm run lint
+        working-directory: frontend
 
-      # - name: Format check
-      #   run: npx prettier --check .
-      #   working-directory: frontend
+      - name: Format check
+        run: npx prettier --check .
+        working-directory: frontend
 
   auto_deployment:
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
     environment: webhook
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: build backend
         run: cargo build --release
         working-directory: backend
@@ -92,26 +92,15 @@ jobs:
           name: deployment
           path: deployment.tar.gz
 
-      - name: Debug artifact id
-        run: |
-          echo "Artifact ID: ${{ steps.upload.artifact.outputs.artifact-id }}"
-          echo "Artifact URL: ${{ steps.upload-artifact.outputs.artifact-url }}"
-
       - name: send secure webhook
         env:
           PRIVATE_KEY: ${{ secrets.WEBHOOK_PRIVATE_KEY }}
           KEY_FINGERPRINT: ${{ secrets.PUBLIC_KEY_FINGERPRINT }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: |
-          echo $PRIVATE_KEY
-          echo ${#PRIVATE_KEY}
-          echo $KEY_FINGERPRINT
-          echo ${#KEY_FINGERPRINT}
-          echo $WEBHOOK_URL
-          echo ${#WEBHOOK_URL}
           # Generate signature data
           TIMESTAMP=$(date +%s)
-          ARTIFACT_URL="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$ARTIFACT_ID"
+          ARTIFACT_URL=${{ steps.upload-artifact.outputs.artifact-url }}
           DATA_STRING="timestamp=$TIMESTAMP|artifact_url=$ARTIFACT_URL"
 
           # Create temp private key
@@ -119,10 +108,10 @@ jobs:
           $PRIVATE_KEY
           EOF
           chmod 600 private.pem
-          
+
           # Generate PKCS#1 v1.5 signature
           SIGNATURE=$(echo -n "$DATA_STRING" | openssl dgst -sha512 -sign private.pem | base64 -w0)
-          
+
           # Send request
           curl -X POST "$WEBHOOK_URL" \
             -H "X-Public-Key-Fingerprint: $KEY_FINGERPRINT" \
@@ -130,6 +119,6 @@ jobs:
             -H "X-Signature: $SIGNATURE" \
             -H "Content-Type: application/json" \
             -d "{\"artifact_url\":$ARTIFACT_URL}"
-          
+
           # Clear private key
           shred -u private.pem
