@@ -84,15 +84,14 @@ jobs:
           mkdir -p artifacts
           cp backend/target/release/backend artifacts
           cp -r frontend/out artifacts
-          tar czvf deployment.tar.gz artifacts
 
       - uses: actions/upload-artifact@v4
         id: upload-artifact
         with:
           name: deployment
-          path: deployment.tar.gz
+          path: artifacts
 
-      - name: Generate secure download link
+      - name: generate secure download link
         id: generate-link
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,10 +103,10 @@ jobs:
           # 生成带签名的直链
           TEMP_URL=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip" \
-            | grep -i Location: | awk '{print $2}' | tr -d '\r')
+            | grep -i Location: | awk '{print $2}' | tr -d '\r\n')
 
           echo "Temporary URL: $TEMP_URL"
-          echo "temp_url=$TEMP_URL" >> $GITHUB_OUTPUT
+          echo "TEMP_URL=$TEMP_URL" >> $GITHUB_ENV
 
       - name: Send secure webhook
         env:
@@ -117,7 +116,7 @@ jobs:
         run: |
           # 生成签名数据
           TIMESTAMP=$(date +%s)
-          ARTIFACT_URL=${{ steps.generate-link.outputs.temp_url }}
+          ARTIFACT_URL=$TEMP_URL
           DATA_STRING="timestamp=$TIMESTAMP|artifact_url=$ARTIFACT_URL"
 
           # 生成PKCS#1 v1.5签名（安全临时文件处理）
