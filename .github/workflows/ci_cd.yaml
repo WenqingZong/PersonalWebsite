@@ -87,9 +87,15 @@ jobs:
           tar czvf deployment.tar.gz artifacts
 
       - uses: actions/upload-artifact@v4
+        id: upload-artifact
         with:
           name: deployment
           path: deployment.tar.gz
+
+      - name: Debug artifact id
+        run: |
+          echo "Artifact ID: ${{ steps.upload.artifact.outputs.artifact-id }}"
+          echo "Artifact URL: ${{ steps.upload-artifact.outputs.artifact-url }}"
 
       - name: send secure webhook
         env:
