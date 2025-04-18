@@ -98,7 +98,7 @@ jobs:
         run: |
           # Generate signature data
           TIMESTAMP=$(date +%s)
-          ARTIFACT_URL="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$ARTIFACT_ID
+          ARTIFACT_URL="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$ARTIFACT_ID"
           DATA_STRING="timestamp=$TIMESTAMP|artifact_url=$ARTIFACT_URL"
 
           # Create temp private key
