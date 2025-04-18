@@ -6,8 +6,8 @@ cargo fmt
 
 # Frontend
 cd ../frontend
-npm run lint -- --fix > /dev/null
-npx prettier --write . > /dev/null
+npm run lint -- --fix > /dev/null 2>&1
+npx prettier --write . > /dev/null 2>&1
 
 # Add the changed files to the commit
 cd ..
