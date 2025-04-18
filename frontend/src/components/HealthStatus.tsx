@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -11,7 +11,7 @@ export default function HealthStatus() {
         const res = await fetch(
           process.env.NODE_ENV === "development"
             ? "http://localhost:8080/api/health"
-            : "/api/health"
+            : "/api/health",
         );
         const text = await res.text();
         setHealthStatus(text);
