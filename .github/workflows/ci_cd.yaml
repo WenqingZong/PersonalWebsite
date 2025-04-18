@@ -98,21 +98,23 @@ jobs:
         run: |
           # Generate signature data
           TIMESTAMP=$(date +%s)
-          DATA_STRING="timestamp=$TIMESTAMP|artifact_url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$ARTIFACT_ID"
-          
+          ARTIFACT_URL="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts/$ARTIFACT_ID
+          DATA_STRING="timestamp=$TIMESTAMP|artifact_url=$ARTIFACT_URL"
+
           # Create temp private key
           echo "$PRIVATE_KEY" > private.pem
+          chmod 600 private.pem
           
           # Generate PKCS#1 v1.5 signature
           SIGNATURE=$(echo -n "$DATA_STRING" | openssl dgst -sha512 -sign private.pem | base64 -w0)
           
           # Send request
-          curl -X POST $WEBHOOK_URL \
+          curl -X POST "$WEBHOOK_URL" \
             -H "X-Public-Key-Fingerprint: $KEY_FINGERPRINT" \
             -H "X-Signature-Timestamp: $TIMESTAMP" \
             -H "X-Signature: $SIGNATURE" \
             -H "Content-Type: application/json" \
-            -d '{"artifact_url": "https://...", "metadata": {...}}'
+            -d '{"artifact_url": $ARTIFACT_URL}'
           
           # Clear private key
           shred -u private.pem
