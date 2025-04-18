@@ -92,33 +92,41 @@ jobs:
           name: deployment
           path: deployment.tar.gz
 
-      - name: send secure webhook
+      - name: Generate secure download link
+        id: generate-link
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 获取临时下载链接（有效期5分钟）
+          ARTIFACT_ID=$(jq -r .artifacts[0].id <<< "$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/actions/artifacts?name=deployment)")
+          
+          # 生成带签名的直链
+          TEMP_URL=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip" \
+            | grep -i Location: | awk '{print $2}' | tr -d '\r')
+
+          echo "Temporary URL: $TEMP_URL"
+          echo "temp_url=$TEMP_URL" >> $GITHUB_OUTPUT
+
+      - name: Send secure webhook
         env:
           PRIVATE_KEY: ${{ secrets.WEBHOOK_PRIVATE_KEY }}
           KEY_FINGERPRINT: ${{ secrets.PUBLIC_KEY_FINGERPRINT }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: |
-          # Generate signature data
+          # 生成签名数据
           TIMESTAMP=$(date +%s)
-          ARTIFACT_URL=${{ steps.upload-artifact.outputs.artifact-url }}
+          ARTIFACT_URL=${{ steps.generate-link.outputs.temp_url }}
           DATA_STRING="timestamp=$TIMESTAMP|artifact_url=$ARTIFACT_URL"
 
-          # Create temp private key
-          cat << 'EOF' > private.pem
-          $PRIVATE_KEY
-          EOF
-          chmod 600 private.pem
+          # 生成PKCS#1 v1.5签名（安全临时文件处理）
+          SIGNATURE=$(echo -n "$DATA_STRING" | openssl dgst -sha512 -sign <(echo "$PRIVATE_KEY") | base64 -w0)
 
-          # Generate PKCS#1 v1.5 signature
-          SIGNATURE=$(echo -n "$DATA_STRING" | openssl dgst -sha512 -sign private.pem | base64 -w0)
-
-          # Send request
+          # 发送带时间戳的请求
           curl -X POST "$WEBHOOK_URL" \
             -H "X-Public-Key-Fingerprint: $KEY_FINGERPRINT" \
             -H "X-Signature-Timestamp: $TIMESTAMP" \
             -H "X-Signature: $SIGNATURE" \
             -H "Content-Type: application/json" \
-            -d "{\"artifact_url\":$ARTIFACT_URL}"
-
-          # Clear private key
-          shred -u private.pem
+            -d "{\"artifact_url\":\"$ARTIFACT_URL\"}"
