@@ -1,9 +1,9 @@
 name: Server CD
 on:
   workflow_run:
-    workflows: ["Backend CI", "Frontend CI"]
+    workflows: ["backend_ci", "frontend_ci"]
     types: [completed]
-    # branches: [main]
+    # branches: ["main", "*"]
 
 
 jobs:
