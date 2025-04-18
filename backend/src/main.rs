@@ -1,3 +1,4 @@
+#[cfg(debug_assertions)]
 use actix_cors::Cors;
 use actix_web::{App, HttpResponse, HttpServer, Responder, web};
 async fn health_check() -> impl Responder {
@@ -9,7 +10,6 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         let app = App::new().route("/api/health", web::get().to(health_check));
 
-        // 仅在debug模式启用CORS配置
         #[cfg(debug_assertions)]
         let app = app.wrap(
             Cors::default()
