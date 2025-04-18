@@ -85,8 +85,7 @@ jobs:
           cp -r frontend/out artifacts
           tar czvf deployment.tar.gz artifacts
 
-      - name: upload artifacts
-        uses: actions/upload-artifacts@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: deployment
           path: deployment.tar.gz
