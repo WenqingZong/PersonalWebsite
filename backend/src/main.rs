@@ -1,5 +1,5 @@
-use actix_web::{App, HttpResponse, HttpServer, Responder, web};
 use actix_cors::Cors;
+use actix_web::{App, HttpResponse, HttpServer, Responder, web};
 async fn health_check() -> impl Responder {
     HttpResponse::Ok().json("Health check passed!")
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from "react";
 
 interface Star {
   pos: { x: number; y: number };
@@ -19,7 +19,12 @@ const StarBackground = () => {
 
   const onScreen = (x: number, y: number): boolean => {
     if (!canvasRef.current) return false;
-    return x >= 0 && x <= canvasRef.current.width && y >= 0 && y <= canvasRef.current.height;
+    return (
+      x >= 0 &&
+      x <= canvasRef.current.width &&
+      y >= 0 &&
+      y <= canvasRef.current.height
+    );
   };
 
   const createStar = (): Star => {
@@ -33,7 +38,7 @@ const StarBackground = () => {
       vel: { x: 0, y: 0 },
       ang: Math.atan2(
         y - canvasRef.current.height / 2,
-        x - canvasRef.current.width / 2
+        x - canvasRef.current.width / 2,
       ),
     };
   };
@@ -51,26 +56,26 @@ const StarBackground = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // 清空画布（实现拖尾效果）
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // 从ref获取鼠标位置计算加速度
-    const acc = mousePosRef.current.x / canvas.width * 0.2 + 0.005;
+    const acc = (mousePosRef.current.x / canvas.width) * 0.2 + 0.005;
 
     // 更新和绘制星星
-    starsRef.current = starsRef.current.filter(star => {
+    starsRef.current = starsRef.current.filter((star) => {
       updateStar(star, acc);
 
       // 绘制运动轨迹
       const velocityMagnitude = Math.sqrt(star.vel.x ** 2 + star.vel.y ** 2);
-      const alpha = Math.min(velocityMagnitude / 3 * 255, 255);
+      const alpha = Math.min((velocityMagnitude / 3) * 255, 255);
 
       ctx.beginPath();
-      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha/255})`;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha / 255})`;
       ctx.lineWidth = 2;
       ctx.moveTo(star.prevPos.x, star.prevPos.y);
       ctx.lineTo(star.pos.x, star.pos.y);
@@ -103,7 +108,7 @@ const StarBackground = () => {
     animationFrame.current = requestAnimationFrame(draw);
 
     // 窗口尺寸变化处理
-    window.addEventListener('resize', updateCanvasSize);
+    window.addEventListener("resize", updateCanvasSize);
 
     // 性能优化：页面不可见时暂停动画
     const handleVisibilityChange = () => {
@@ -113,11 +118,11 @@ const StarBackground = () => {
         animationFrame.current = requestAnimationFrame(draw);
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('resize', updateCanvasSize);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener("resize", updateCanvasSize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (animationFrame.current) {
         cancelAnimationFrame(animationFrame.current);
       }
@@ -129,20 +134,20 @@ const StarBackground = () => {
     const handleMouseMove = (e: MouseEvent) => {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
       style={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
         zIndex: -1,
-        width: '100vw',
-        height: '100vh',
+        width: "100vw",
+        height: "100vh",
       }}
     />
   );
