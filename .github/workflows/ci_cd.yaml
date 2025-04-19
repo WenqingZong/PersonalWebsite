@@ -129,3 +129,4 @@ jobs:
             -H "X-Signature: $SIGNATURE" \
             -H "Content-Type: application/json" \
             -d "{\"artifact_url\":\"$ARTIFACT_URL\"}"
+
