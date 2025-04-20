@@ -147,7 +147,7 @@ async fn personal_website(payload: Json<WebhookPayload>, request: HttpRequest) -
             return HttpResponse::NotFound().finish()
         }
     };
-    let mut verifier = Verifier::new(MessageDigest::sha256(), pub_key).unwrap();
+    let mut verifier = Verifier::new(MessageDigest::sha512(), pub_key).unwrap();
     verifier.update(data_string.as_bytes()).unwrap();
     if !verifier.verify(&signature_bytes).unwrap_or(false) {
         log_failed_attempt(WebhookError::InvalidSignature, &payload, &request);
