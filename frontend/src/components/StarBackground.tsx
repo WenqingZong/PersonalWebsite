@@ -9,34 +9,44 @@ interface Star {
   ang: number;
 }
 
+// Create a single star, use CSS logical coordination.
+const createStar = (width: number, height: number): Star => {
+  const x = Math.random() * width;
+  const y = Math.random() * height;
+  return {
+    pos: { x, y },
+    prevPos: { x, y },
+    vel: { x: 0, y: 0 },
+    ang: Math.atan2(y - height / 2, x - width / 2),
+  };
+};
+
+// Check is a star is within window, use CSS logical coordination.
+const onScreen = (
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): boolean => {
+  return x >= 0 && x <= width && y >= 0 && y <= height;
+};
+
 const StarBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mousePosRef = useRef({ x: 0, y: 0 });
   const starsRef = useRef<Star[]>([]);
-  const animationFrame = useRef<number>(null);
-  const devicePixelRatio = useRef(1);
-
+  const animationFrame = useRef<number>(0);
   const NUM_STARS = 500;
 
-  const onScreen = (x: number, y: number): boolean => {
-    return (
-      x >= 0 && x <= window.innerWidth && y >= 0 && y <= window.innerHeight
-    );
+  // Get current CSS logical width and height.
+  const getSize = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { width: 0, height: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
   };
 
-  const createStar = (): Star => {
-    const logicalWidth = window.innerWidth;
-    const logicalHeight = window.innerHeight;
-    const x: number = Math.random() * logicalWidth;
-    const y: number = Math.random() * logicalHeight;
-    return {
-      pos: { x, y },
-      prevPos: { x: 0, y: 0 },
-      vel: { x: 0, y: 0 },
-      ang: Math.atan2(y - logicalHeight / 2, x - logicalWidth / 2),
-    };
-  };
-
+  // Update star location
   const updateStar = (star: Star, acc: number) => {
     star.vel.x += Math.cos(star.ang) * acc;
     star.vel.y += Math.sin(star.ang) * acc;
@@ -46,41 +56,43 @@ const StarBackground = () => {
     star.pos.y += star.vel.y;
   };
 
+  // Main draw implementation.
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 清空画布（实现拖尾效果）
+    const { width, height } = getSize();
+
+    // A black semi-transparent background for 'tail' effect.
     ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
-    // 从ref获取鼠标位置计算加速度（使用逻辑宽度）
-    const acc = (mousePosRef.current.x / window.innerWidth) * 0.2 + 0.005;
+    // Adjust speech according to mouse location.
+    // TODO: Only accelerate when scrolling.
+    const acc = (mousePosRef.current.x / width) * 0.2 + 0.005;
 
-    // 更新和绘制星星
+    // Update and draw each star
     starsRef.current = starsRef.current.filter((star) => {
       updateStar(star, acc);
 
-      // 绘制运动轨迹
-      const velocityMagnitude = Math.sqrt(star.vel.x ** 2 + star.vel.y ** 2);
-      const alpha = Math.min((velocityMagnitude / 3) * 255, 255);
+      const speed = Math.hypot(star.vel.x, star.vel.y);
+      const alpha = Math.min(speed / 3, 1);
 
       ctx.beginPath();
-      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha / 255})`;
-      ctx.lineWidth = 2; // 该值会自动根据devicePixelRatio调整
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.lineWidth = 2;
       ctx.moveTo(star.prevPos.x, star.prevPos.y);
       ctx.lineTo(star.pos.x, star.pos.y);
       ctx.stroke();
 
-      return onScreen(star.prevPos.x, star.prevPos.y);
+      return onScreen(star.prevPos.x, star.prevPos.y, width, height);
     });
 
-    // 补充消失的星星
+    // Generate new starts.
     while (starsRef.current.length < NUM_STARS) {
-      starsRef.current.push(createStar());
+      starsRef.current.push(createStar(width, height));
     }
 
     animationFrame.current = requestAnimationFrame(draw);
@@ -89,49 +101,64 @@ const StarBackground = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    // 响应式画布尺寸（适配高DPI）
-    const updateCanvasSize = () => {
-      const ratio = window.devicePixelRatio || 1;
-      devicePixelRatio.current = ratio;
+    starsRef.current = Array.from({ length: NUM_STARS }, createStar);
 
-      const logicalWidth = window.innerWidth;
-      const logicalHeight = window.innerHeight;
+    let lastDpr = window.devicePixelRatio || 1;
 
-      canvas.width = logicalWidth * ratio;
-      canvas.height = logicalHeight * ratio;
-      canvas.style.width = `${logicalWidth}px`;
-      canvas.style.height = `${logicalHeight}px`;
+    // Adjust canvas size and zoom out, and fill with black background.
+    const resizeCanvas = () => {
+      const { width: cssW, height: cssH } = getSize();
+      const dpr = window.devicePixelRatio || 1;
 
-      const ctx = canvas.getContext("2d");
-      ctx?.setTransform(ratio, 0, 0, ratio, 0, 0);
+      if (
+        dpr === lastDpr &&
+        canvas.width === cssW * dpr &&
+        canvas.height === cssH * dpr
+      ) {
+        return;
+      }
+      lastDpr = dpr;
+
+      // Convert CSS logical coordination to physical coordination.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+      // Physical pixel size.
+      canvas.width = cssW * dpr;
+      canvas.height = cssH * dpr;
+
+      ctx.scale(dpr, dpr);
+
+      // Fill with black to prevent a white flash.
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, cssW, cssH);
+      starsRef.current = [];
     };
 
-    updateCanvasSize();
+    // Listen for CSS size change.
+    const ro = new ResizeObserver(resizeCanvas);
+    ro.observe(canvas);
 
-    // 初始化星星
-    starsRef.current = Array.from({ length: NUM_STARS }, createStar);
+    resizeCanvas();
     animationFrame.current = requestAnimationFrame(draw);
 
-    // 窗口尺寸变化处理
-    window.addEventListener("resize", updateCanvasSize);
-
-    // 性能优化：页面不可见时暂停动画
-    const handleVisibilityChange = () => {
-      if (document.hidden && animationFrame.current) {
+    // Page visibility.
+    const handleVis = () => {
+      if (document.hidden) {
         cancelAnimationFrame(animationFrame.current);
       } else {
+        resizeCanvas();
         animationFrame.current = requestAnimationFrame(draw);
       }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVis);
 
     return () => {
-      window.removeEventListener("resize", updateCanvasSize);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (animationFrame.current) {
-        cancelAnimationFrame(animationFrame.current);
-      }
+      ro.disconnect();
+      document.removeEventListener("visibilitychange", handleVis);
+      cancelAnimationFrame(animationFrame.current);
     };
   }, [draw]);
 
@@ -153,6 +180,7 @@ const StarBackground = () => {
         zIndex: -1,
         width: "100vw",
         height: "100vh",
+        backgroundColor: "#000",
       }}
     />
   );
