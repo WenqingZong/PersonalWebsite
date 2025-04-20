@@ -1,0 +1,130 @@
+name: Personal Website CI/CD
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  backend_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: cargo check
+        run: cargo check --all
+        working-directory: backend
+
+      - name: cargo fmt check
+        run: cargo fmt --all --check
+        working-directory: backend
+
+      - name: cargo test
+        run: cargo test --all
+        working-directory: backend
+
+      - name: cargo clippy check
+        run: cargo clippy --all --all-targets --all-features
+        working-directory: backend
+
+  frontend_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "latest"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Type check
+        run: npm run type-check
+        working-directory: frontend
+
+      - name: Lint check
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Format check
+        run: npx prettier --check .
+        working-directory: frontend
+
+  auto_deployment:
+    runs-on: ubuntu-latest
+    needs: [backend_check, frontend_check]
+    if: github.ref == 'refs/heads/main' && needs.backend_check.result == 'success' && needs.frontend_check.result == 'success'
+    environment: webhook
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: build backend
+        run: cargo build --release
+        working-directory: backend
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "latest"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: build frontend
+        run: |
+          npm ci
+          npm run build
+        working-directory: frontend
+
+      - name: package artifacts
+        run: |
+          mkdir -p artifacts
+          cp backend/target/release/backend artifacts
+          cp -r frontend/out artifacts
+
+      - uses: actions/upload-artifact@v4
+        id: upload-artifact
+        with:
+          name: deployment
+          path: artifacts
+
+      - name: generate secure download link
+        id: generate-link
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Generate temp download link, valid for 5 minutes.
+          ARTIFACT_ID=$(jq -r .artifacts[0].id <<< "$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/repos/${{ github.repository }}/actions/artifacts?name=deployment)")
+          
+          # Generate a direct link with signature.
+          TEMP_URL=$(curl -s -I -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID/zip" \
+            | grep -i Location: | awk '{print $2}' | tr -d '\r\n')
+
+          echo "TEMP_URL=$TEMP_URL" >> $GITHUB_ENV
+
+      - name: send secure webhook
+        env:
+          PRIVATE_KEY: ${{ secrets.WEBHOOK_PRIVATE_KEY }}
+          KEY_FINGERPRINT: ${{ secrets.PUBLIC_KEY_FINGERPRINT }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: |
+          # Generate data to sign.
+          TIMESTAMP=$(date +%s)
+          ARTIFACT_URL=$TEMP_URL
+          DATA_STRING="timestamp=$TIMESTAMP|artifact_url=$ARTIFACT_URL"
+
+          # Generate signature with PKCS 1 algorithm.
+          SIGNATURE=$(echo -n "$DATA_STRING" | openssl dgst -sha512 -sign <(echo "$PRIVATE_KEY") | base64 -w0)
+
+          # Send request with timestamp
+          curl -X POST "$WEBHOOK_URL" \
+            -H "X-Public-Key-Fingerprint: $KEY_FINGERPRINT" \
+            -H "X-Signature-Timestamp: $TIMESTAMP" \
+            -H "X-Signature: $SIGNATURE" \
+            -H "Content-Type: application/json" \
+            -d "{\"artifact_url\":\"$ARTIFACT_URL\"}"
+

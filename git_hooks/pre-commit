@@ -1,7 +1,14 @@
 #!/bin/sh
 
-# Run cargo fmt
+# Backend
+cd backend
 cargo fmt
 
-# Add the formatted files to the commit
-git add -u
+# Frontend
+cd ../frontend
+npm run lint -- --fix > /dev/null 2>&1
+npx prettier --write . > /dev/null 2>&1
+
+# Add the changed files to the commit
+cd ..
+git add --update

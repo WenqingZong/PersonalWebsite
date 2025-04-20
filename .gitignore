@@ -6,6 +6,11 @@
 backend/target/
 frontend/out/
 frontend/node_modules/
+webhook/target/
 
 # MacOS
 .DS_Store
+
+# Secrets
+webhook/public.pem
+
