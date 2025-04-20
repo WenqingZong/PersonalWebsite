@@ -80,7 +80,10 @@ fn validate_timestamp(timestamp: &str) -> Result<()> {
 }
 
 fn execute_shell_script(artifact_url: &str) -> Result<()> {
-    let output = Command::new("sh").arg("./update_deployment.sh").arg(artifact_url).output()?;
+    let output = Command::new("sh")
+        .arg("./update_deployment.sh")
+        .arg(artifact_url)
+        .output()?;
 
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr);
@@ -155,7 +158,6 @@ async fn personal_website(payload: Json<WebhookPayload>, request: HttpRequest) -
         log_failed_attempt(WebhookError::InvalidSignature, &payload, &request);
         return HttpResponse::NotFound().finish();
     }
-
     if let Err(e) = execute_shell_script(&payload.artifact_url) {
         warn!("Cannot execute shell script due to: {}", e);
         return HttpResponse::InternalServerError().finish();
