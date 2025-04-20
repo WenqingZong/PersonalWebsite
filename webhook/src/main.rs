@@ -124,7 +124,7 @@ async fn personal_website(payload: Json<WebhookPayload>, request: HttpRequest) -
             return HttpResponse::NotFound().finish();
         }
     };
-    if let Err(_) = validate_timestamp(received_timestamp) {
+    if validate_timestamp(received_timestamp).is_err() {
         log_failed_attempt(WebhookError::InvalidTimestamp, &payload, &request);
         return HttpResponse::NotFound().finish();
     }

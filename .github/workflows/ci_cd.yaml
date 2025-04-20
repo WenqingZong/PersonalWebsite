@@ -57,8 +57,7 @@ jobs:
   auto_deployment:
     runs-on: ubuntu-latest
     needs: [backend_check, frontend_check]
-    # if: github.ref == 'refs/heads/main' && needs.backend-check.result == 'success' && needs.frontend-check.result == 'success'
-    if: needs.backend_check.result == 'success' && needs.frontend_check.result == 'success'
+    if: github.ref == 'refs/heads/main' && needs.backend_check.result == 'success' && needs.frontend_check.result == 'success'
     environment: webhook
     steps:
       - uses: actions/checkout@v3
