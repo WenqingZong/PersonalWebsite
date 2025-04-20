@@ -14,32 +14,26 @@ const StarBackground = () => {
   const mousePosRef = useRef({ x: 0, y: 0 });
   const starsRef = useRef<Star[]>([]);
   const animationFrame = useRef<number>(null);
+  const devicePixelRatio = useRef(1);
 
   const NUM_STARS = 500;
 
   const onScreen = (x: number, y: number): boolean => {
-    if (!canvasRef.current) return false;
     return (
-      x >= 0 &&
-      x <= canvasRef.current.width &&
-      y >= 0 &&
-      y <= canvasRef.current.height
+      x >= 0 && x <= window.innerWidth && y >= 0 && y <= window.innerHeight
     );
   };
 
   const createStar = (): Star => {
-    if (!canvasRef.current) throw new Error("Canvas not initialized");
-
-    const x: number = Math.random() * canvasRef.current.width;
-    const y: number = Math.random() * canvasRef.current.height;
+    const logicalWidth = window.innerWidth;
+    const logicalHeight = window.innerHeight;
+    const x: number = Math.random() * logicalWidth;
+    const y: number = Math.random() * logicalHeight;
     return {
       pos: { x, y },
       prevPos: { x: 0, y: 0 },
       vel: { x: 0, y: 0 },
-      ang: Math.atan2(
-        y - canvasRef.current.height / 2,
-        x - canvasRef.current.width / 2,
-      ),
+      ang: Math.atan2(y - logicalHeight / 2, x - logicalWidth / 2),
     };
   };
 
@@ -63,8 +57,8 @@ const StarBackground = () => {
     ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 从ref获取鼠标位置计算加速度
-    const acc = (mousePosRef.current.x / canvas.width) * 0.2 + 0.005;
+    // 从ref获取鼠标位置计算加速度（使用逻辑宽度）
+    const acc = (mousePosRef.current.x / window.innerWidth) * 0.2 + 0.005;
 
     // 更新和绘制星星
     starsRef.current = starsRef.current.filter((star) => {
@@ -76,7 +70,7 @@ const StarBackground = () => {
 
       ctx.beginPath();
       ctx.strokeStyle = `rgba(255, 255, 255, ${alpha / 255})`;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2; // 该值会自动根据devicePixelRatio调整
       ctx.moveTo(star.prevPos.x, star.prevPos.y);
       ctx.lineTo(star.pos.x, star.pos.y);
       ctx.stroke();
@@ -96,11 +90,23 @@ const StarBackground = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // 响应式画布尺寸
+    // 响应式画布尺寸（适配高DPI）
     const updateCanvasSize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const ratio = window.devicePixelRatio || 1;
+      devicePixelRatio.current = ratio;
+
+      const logicalWidth = window.innerWidth;
+      const logicalHeight = window.innerHeight;
+
+      canvas.width = logicalWidth * ratio;
+      canvas.height = logicalHeight * ratio;
+      canvas.style.width = `${logicalWidth}px`;
+      canvas.style.height = `${logicalHeight}px`;
+
+      const ctx = canvas.getContext("2d");
+      ctx?.setTransform(ratio, 0, 0, ratio, 0, 0);
     };
+
     updateCanvasSize();
 
     // 初始化星星
@@ -130,7 +136,6 @@ const StarBackground = () => {
   }, [draw]);
 
   useEffect(() => {
-    // 鼠标移动监听（使用ref存储位置，不触发重渲染）
     const handleMouseMove = (e: MouseEvent) => {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
     };
